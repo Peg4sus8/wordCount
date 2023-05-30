@@ -5,15 +5,17 @@
 #include <string.h>
 
 #define MAX_NAME 25
-#define SIZE 17     //size massima di una parola
+#define SIZE 20     //size massima di una parola
 #define MASTER 0
+#define DIRECTORY 200
+
 //  Definizione strutture 
 
 typedef struct {            //da creare come array di nproc, ogni istanza
     int nFile;              //avrà le informazioni relative al carico di quel processo
-    int *indexFiles;
-    int *startFd;
-    int *endFd;
+    int indexFiles[SIZE];
+    int startFd[SIZE];
+    int endFd[SIZE];
     int size;
 } DataDist;
 
@@ -28,10 +30,13 @@ typedef struct {            //informazioni sulla directory
 //  Definizione metodi 
 
 extern void distribute(DataDist *struc, Info info, int numtasks);
-extern Info getInfo(char *path);
+extern Info getInfo();
 extern void printInfo(Info i);
 extern int sommaDims(int *dims, int n);
 extern int myCeil(double d);
 extern int myfloor(double d);
 extern void printDistribution(DataDist *d, Info info, int numtasks);
 extern void setSize(DataDist *d, int sum, int numtasks);
+extern void printOneDistr(DataDist d, char names[][MAX_NAME], int rank);
+extern void exit_nomem(void);
+extern int ischar(char c);

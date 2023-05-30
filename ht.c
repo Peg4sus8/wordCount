@@ -195,3 +195,103 @@ bool ht_next(hti* it) {
     }
     return false;
 }
+
+merged_ht* merged_ht_create(int numEntries){
+     // Allocate space for hash table struct.
+    merged_ht* table = malloc(sizeof(merged_ht) * numEntries);
+    if (table == NULL) {
+        return NULL;
+    }
+
+    return table;
+}
+
+void merged_ht_destroy(merged_ht* table){
+     free(table);
+}
+
+void merge(merged_ht* mergedTable, int l, int m, int r){
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
+
+    // Vengono creati degli array temporanei
+    int L1[n1], R1[n2];
+    char L2[n1][WORD], R2[n2][WORD];
+ 
+    // Vengono riempiti
+    for (i = 0; i < n1; i++){
+        strcpy(L2[i], mergedTable[l + i].word);
+        L1[i] = mergedTable[l + i].freq;
+    }
+    for (j = 0; j < n2; j++){
+        strcpy(R2[j], mergedTable[m + 1 + j].word);
+        R1[j] = mergedTable[m + 1 + j].freq;
+    }
+
+    // Vengono uniti gli array temporanei negli array di partenza nella struttura dati
+    i = 0; // Indice iniziale del primo sottoarray
+    j = 0; // Indice iniziale del secondo sottoarray
+    k = l; // Indice iniziale del sottoarray unito
+
+    while (i < n1 && j < n2) {
+        if (L1[i] > R1[j]) {
+            strcpy(mergedTable[k].word, L2[i]);
+            mergedTable[k].freq = L1[i];
+
+            i++;
+        }
+        else if(L1[i] < R1[j]){
+            strcpy(mergedTable[k].word, R2[j]);
+            mergedTable[k].freq = R1[j];
+            
+            j++;
+        } else {
+            if(strcmp(L2[i], R2[j]) < 0){
+                strcpy(mergedTable[k].word, L2[i]);
+                mergedTable[k].freq = L1[i];
+
+                i++;
+            } else {
+                strcpy(mergedTable[k].word, R2[j]);
+                mergedTable[k].freq = R1[j];
+                
+                j++;
+            }
+        }
+        k++;
+    }
+ 
+    // Vengono copiati gli elementi rimanenti del primo sottoarray, se ce ne sono
+    while (i < n1) {
+        strcpy(mergedTable[k].word, L2[i]);
+        mergedTable[k].freq = L1[i];
+        i++;
+        k++;
+    }
+ 
+    // Vengono copiati gli elementi rimanenti del secondo sottoarray, se ce ne sono
+    while (j < n2) {
+        strcpy(mergedTable[k].word, R2[j]);
+        mergedTable[k].freq = R1[j];
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(merged_ht* mergedTable, int l, int r){
+    if (l < r) {
+        // Uguale a (l+r)/2, ma evita l'overflow per l e h grandi
+        int m = l + (r - l) / 2;
+ 
+        // Ordiniamo ricorsivamente la prima e la seconda metà degli array
+        mergeSort(mergedTable, l, m);
+        mergeSort(mergedTable, m + 1, r);
+ 
+        merge(mergedTable, l, m, r);
+    }
+}
+
+void setword(merged_ht *table, const char *string){
+    strcpy(table->word, string);
+}

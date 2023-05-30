@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <string.h>
 #include "datadistr.h"
 #include "mpi.h"
@@ -33,13 +34,7 @@ void distribute(DataDist *struc, Info info, int numtasks){
         mediaFiles = myCeil((double)info.n/numtasks),
         count, tot;          //Contatore universale per i file in info 
 
-    //  Inizializzazione della struttura DataDist *struc
-    for (int j = 0; j < numtasks; j++){
-        struc[j].indexFiles = malloc(mediaFiles * sizeof(int));
-        struc[j].startFd = malloc(mediaFiles * sizeof(int));
-        struc[j].endFd = malloc(mediaFiles * sizeof(int));
-        struc[j].nFile = 0;
-    }
+    
     setSize(struc, somma, numtasks);
 
     /*  ------------- Fine Distribzione dei valori ---------------- */
@@ -56,6 +51,7 @@ void distribute(DataDist *struc, Info info, int numtasks){
 
 
     for(int i = 0; i < numtasks ; i++){      //Ciclo per i processori 
+        struc[i].nFile = 0;
        // somma = 0;
         for(int j = 0; struc[i].size != 0 && count < info.n; j++){      //Ciclo per assegnare i file ai processori
 
@@ -79,12 +75,17 @@ void distribute(DataDist *struc, Info info, int numtasks){
                 //somma += struc[i].size;
                 struc[i].size = 0;
             }
-
             //  file aggiunto
             struc[i].nFile += 1;
-            
+            /*if(struc[i].nFile == mediaFiles){
+                mediaFiles += 1;
+                struc[i].indexFiles = realloc(struc[i].indexFiles, mediaFiles * sizeof(int));
+                struc[i].startFd = realloc(struc[i].startFd, mediaFiles * sizeof(int));
+                struc[i].endFd = realloc(struc[i].endFd, mediaFiles * sizeof(int));
+            }   */      
 
         }  
+        
         //tot += somma;
         //printf("%d ) %d\n", i, somma);
         //printf("Size rimanente: %d\n", struc[i].size);
@@ -99,39 +100,42 @@ void distribute(DataDist *struc, Info info, int numtasks){
     Metodo che fa la lettura della directory e riempe la struttura Info con le 
     info che saranno poi utili per la distribuzione del carico ai processori  
 */
-Info getInfo(char *path){   
+Info getInfo(){   
     int numelem = 5;
     DIR *d;
     struct dirent *dir;
     struct stat buf;
+    char path[DIRECTORY];
     Info i;
     i.n = 0;
     i.dims = malloc(numelem * sizeof(int));
     i.restDim = malloc(numelem * sizeof(int));
     i.names = malloc(numelem * MAX_NAME * sizeof(char));
+    strcat(getcwd(path, DIRECTORY), "/files");
+    chdir(path);
 
-    if (d = opendir(path)) {
-        while ((dir = readdir(d)) != NULL) {   
-            stat(dir->d_name, &buf);
-            
-            if(!S_ISDIR(buf.st_mode))  {  
-                i.names[i.n] = malloc(sizeof(char) * strlen(dir->d_name) + 1);
-                strcpy(i.names[i.n], dir->d_name);
-                i.dims[i.n] = buf.st_size;
-                i.restDim[i.n] = buf.st_size; 
-                i.n += 1;
-            }
-            if (i.n == numelem){
-                numelem += 1;
-                i.dims = realloc(i.dims, numelem * sizeof(int));
-                i.restDim = realloc(i.restDim, numelem * sizeof(int));
-                i.names = realloc(i.names, numelem * MAX_NAME * sizeof(char));
-            }
-        }
-    } else {
+    if (!(d = opendir(path))) {
         fprintf(stderr, "[ERROR] Impossibile aprire la directory\n");
         exit(0);
     }
+    while ((dir = readdir(d)) != NULL) {   
+        stat(dir->d_name, &buf);
+            
+        if(!S_ISDIR(buf.st_mode))  {  
+            i.names[i.n] = malloc(sizeof(char) * strlen(dir->d_name) + 1);
+            strcpy(i.names[i.n], dir->d_name);
+            i.dims[i.n] = buf.st_size;
+            i.restDim[i.n] = buf.st_size; 
+            i.n += 1;
+        }
+        if (i.n == numelem){
+            numelem += 1;
+            i.dims = realloc(i.dims, numelem * sizeof(int));
+            i.restDim = realloc(i.restDim, numelem * sizeof(int));
+            i.names = realloc(i.names, numelem * MAX_NAME * sizeof(char));
+        }
+    }
+
     closedir(d);
     return i;
 }
@@ -196,4 +200,20 @@ void setSize(DataDist *d, int sum, int numtasks){
         else
             d[j].size = myfloor((double)sum/numtasks);
     }
+}
+
+void printOneDistr(DataDist d, char names[][MAX_NAME], int rank){
+    printf("\t --- sono %d ---\n", rank);
+    for (int i = 0; i < d.nFile; i++)
+        printf(">> %s: start[%d] end[%d]\n", names[d.indexFiles[i]], d.startFd[i], d.endFd[i]);
+}
+
+void exit_nomem(void) {
+    fprintf(stderr, "out of memory\n");
+    exit(1);
+}
+
+int ischar(char c){
+    int ch = (int) c;
+    return (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122);
 }
