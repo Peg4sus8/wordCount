@@ -4,10 +4,11 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#define MAX_NAME 25
-#define SIZE 20     //size massima di una parola
+#define MAX_NAME 35     //size massima del nome di un file
+#define WORD 25         //size massima di una parola
+#define SIZE 40         //numero di file massimi nella directory
 #define MASTER 0
-#define DIRECTORY 200
+#define DIRECTORY 200   //numero di caratteri per scrivere la directory
 
 //  Definizione strutture 
 
@@ -40,3 +41,4 @@ extern void setSize(DataDist *d, int sum, int numtasks);
 extern void printOneDistr(DataDist d, char names[][MAX_NAME], int rank);
 extern void exit_nomem(void);
 extern int ischar(char c);
+extern int isAscii(char c);

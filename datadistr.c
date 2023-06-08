@@ -217,3 +217,8 @@ int ischar(char c){
     int ch = (int) c;
     return (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122);
 }
+
+int isAscii(char c){
+	int ch = (int) c;
+	return (ch <= 255 && ch >= 0);
+}

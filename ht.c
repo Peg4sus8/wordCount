@@ -199,15 +199,15 @@ bool ht_next(hti* it) {
 merged_ht* merged_ht_create(int numEntries){
      // Allocate space for hash table struct.
     merged_ht* table = malloc(sizeof(merged_ht) * numEntries);
+
     if (table == NULL) {
         return NULL;
     }
-
     return table;
 }
 
 void merged_ht_destroy(merged_ht* table){
-     free(table);
+    free(table);
 }
 
 void merge(merged_ht* mergedTable, int l, int m, int r){
@@ -287,11 +287,11 @@ void mergeSort(merged_ht* mergedTable, int l, int r){
         // Ordiniamo ricorsivamente la prima e la seconda metà degli array
         mergeSort(mergedTable, l, m);
         mergeSort(mergedTable, m + 1, r);
- 
+        
         merge(mergedTable, l, m, r);
     }
 }
 
-void setword(merged_ht *table, const char *string){
-    strcpy(table->word, string);
+void setword(merged_ht *table, const char *string, int i){
+    strcpy(table[i].word, string);
 }

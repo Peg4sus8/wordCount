@@ -3,14 +3,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include "ht.h"
 #include "datadistr.h"
 #include "mpi.h"
-
-#define WORD 20
 
 void insertWord(ht* counts, char *temp, int countWord);
 
@@ -22,28 +21,31 @@ int main(int argc, char *argv[]){
 	char names[SIZE][MAX_NAME], *file, *path, ch;
 	DataDist mydistr;
 	Info i;
-	ht *counts = ht_create();
+	ht *counts = ht_create(),
+	   *mergedTable;
 	FILE *fp;
 	MPI_Status status;
 
 	//variabili per MPI_PACK
-	int wordlenght = WORD, 
+	int wordlenght = WORD,
+		namelenght = MAX_NAME,
+		direclenght = DIRECTORY, 
 		sizepack, countpack, position, sizetoreceive, numel, 
 		*countselem, *dispelem;
 	char *hashsend, *htsreceived;
 	hti it, htit;
 	
 	//Inizializzazione
-	counts = ht_create();
+	//counts = ht_create();
 	if (counts == NULL)
         exit_nomem();
 	
 	
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
-	file = malloc(MAX_NAME * sizeof(char) + DIRECTORY * sizeof(char));
-	path = malloc(MAX_NAME * sizeof(char) + DIRECTORY * sizeof(char));
-    strcat(getcwd(path, DIRECTORY), "/files/");
+	file = malloc(namelenght * sizeof(char) + direclenght * sizeof(char));
+	path = malloc(direclenght * sizeof(char));
+    strcat(getcwd(path, direclenght), "/files/");
 	
 	//---------------- Creo il datatype per la distribuzione dei dati ----------------------------	
     MPI_Datatype MPI_DATA_DISTR;
@@ -82,10 +84,13 @@ int main(int argc, char *argv[]){
 		//printDistribution(tmpDistr, i, numtasks);
 		
 		MPI_Scatter(&tmpDistr[0], 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
-
-	}	else {
+		free(i.dims);
+		free(i.names);
+		free(i.restDim);
+	}	else 
 		MPI_Scatter(NULL, 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
-	}
+		
+	
 	MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -109,10 +114,10 @@ typedef struct {
 		strcat(file, names[mydistr.indexFiles[i]]);		
 
 		if (!(fp = fopen(file, "r"))) {
-            fprintf(stderr, "Error: Failed to open entry file - %s\n", strerror(errno));
+            fprintf(stderr, "[%d](%s)Error: Failed to open entry file - %s\n", myrank, file, strerror(errno));
             fclose(fp);
             return 1;
-        } 
+        } else
 		
 		if(mydistr.startFd[i] != 0)	{		//controlla se il carattere precedente è un char
 			fseek(fp, mydistr.startFd[i] - 1, SEEK_SET);
@@ -139,6 +144,8 @@ typedef struct {
 		} else {
 			while(1){
 				ch = fgetc(fp);
+				//if(ftell(fp) >= 142 && ftell(fp)<=152)	printf("%c\n", ch);	
+
 				if(ftell(fp) == mydistr.endFd[i]) {	//controlla che la parola appena letta sia terminata
 					if(ischar(ch)){
 						wordToAdd[j++] = ch;
@@ -148,15 +155,18 @@ typedef struct {
 								wordToAdd[j++] = ch;
 							else {
 								wordToAdd[j] = '\0';
-								insertWord(counts, wordToAdd, 1);
+								if(strlen(wordToAdd) > 0){						
+									insertWord(counts, wordToAdd, 1);
+								}
 								break;
 							}
 						}		
 					} else{
 						wordToAdd[j] = '\0';
-						insertWord(counts, wordToAdd, 1);
+						if(strlen(wordToAdd) > 0){						
+							insertWord(counts, wordToAdd, 1);
+						}
 					}
-
 					break;			
 				}
 
@@ -174,8 +184,9 @@ typedef struct {
 		}
 		fclose(fp);
 	}
+	
 	//MPI_Barrier(MPI_COMM_WORLD);
-
+	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------
 	sizepack = sizeof(int) + (((sizeof(char) * wordlenght) + sizeof(int)) * ht_length(counts));
 	countpack = 4 + ((wordlenght + 4) * ht_length(counts));
@@ -194,15 +205,15 @@ typedef struct {
 
 	if(myrank == MASTER){	//se sei master preparati a ricevere la gatherv
 		int tmp = 0;
-		dispelem[0] = 0;		
+		dispelem[0] = 0;
+		sizetoreceive += countselem[0]; 	
 		
 		for(int i = 1; i < numtasks; i++){
 			dispelem[i] = tmp + countselem[i-1];
 			tmp += countselem[i-1];
 			sizetoreceive += countselem[i];
 		}
-
-		htsreceived = malloc(sizetoreceive + 1);	
+		htsreceived = malloc((sizetoreceive + 1) * sizeof(char));	
 	} else {	//altrimenti impacchettate i dati
 		int length = ht_length(counts);
 		MPI_Pack(&length, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
@@ -211,14 +222,15 @@ typedef struct {
 			int countword = *((int*) it.value);
 			char key[wordlenght];
 			strcpy(key, it.key);
-
+			//printf("%s - %d\n", key, countword);
 			MPI_Pack(key, wordlenght, MPI_CHAR, hashsend, sizepack, &position, MPI_COMM_WORLD);
 			MPI_Pack(&countword, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
 		}
 	}
 	MPI_Gatherv(hashsend, countpack, MPI_PACKED, htsreceived, countselem, dispelem, MPI_PACKED, MASTER, MPI_COMM_WORLD);
-	// ----------- Fine spedizione tabelle ----- Inizio unpack ---------------
 
+	// ----------- Fine spedizione tabelle ----- Inizio unpack ---------------
+	
 	if(myrank == MASTER){
         int numEntries;
         for(int i = 1; i < numtasks; i++){
@@ -229,9 +241,35 @@ typedef struct {
             for(int j = 0; j < numEntries; j++){
                 MPI_Unpack(&htsreceived[dispelem[i]], countselem[i], &position, temp, wordlenght, MPI_CHAR, MPI_COMM_WORLD);
                 MPI_Unpack(&htsreceived[dispelem[i]], countselem[i], &position, &countWord, 1, MPI_INT, MPI_COMM_WORLD);
+				//printf(" - %d\n", countWord);
                 insertWord(counts, temp, countWord);
-            }
+            }	
         }
+	
+		//Ordinamento
+		/*int n = (ht_length(counts) + 1),
+			freqs[n];
+		char words[n][wordlenght];
+		it = ht_iterator(counts);
+        
+		for(int i = 0; i < n; i++){
+			ht_next(&it);        
+			strcpy(words[i], it.key);
+			freqs[i] = *((int*) it.value);
+			printf("%s - %d\n", words[i], freqs[i]);
+			
+			setword(mergedTable, htit.key, q);
+            strcpy(&mergedTable[q].word, htit.key);
+            mergedTable[q].freq = *(int*) htit.value;
+        }
+		mergedTable = ht_create();
+		if (mergedTable == NULL)
+            exit_nomem();
+        
+        // Effettuo l'ordinamento
+        mergeSort(mergedTable, 0, numEntries - 1);
+        merged_ht_destroy(mergedTable, numEntries);*/
+		
 		//Ordinamento
 		numEntries = ht_length(counts);
         merged_ht* mergedTable = merged_ht_create(numEntries);
@@ -281,9 +319,9 @@ typedef struct {
 		1) Lettura della direcctory e memorizzazione dei dati		(Fatto)
 		2) Divisione del carico										(Fatto)
 		3) Implementazione della Hash Table							(Fatto)
-		4) Conteggio delle occorrenze di ogni parola				()
-		5) Fusione dei risultati									()
-		6) merge
+		4) Conteggio delle occorrenze di ogni parola				(Fatto)
+		5) Fusione dei risultati									(Fatto)
+		6) merge													()
 		
 		Idea per (1)
 		- Leggo la directory con la sua dimensione
@@ -340,3 +378,4 @@ void insertWord(ht* counts, char *temp, int countWord){
         }
     }
 }
+

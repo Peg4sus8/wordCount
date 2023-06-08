@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 
-#define WORD 20
+#define WORD 25
 
 // Hash table structure: create with ht_create, free with ht_destroy.
 typedef struct ht ht;
@@ -60,6 +60,6 @@ extern merged_ht* merged_ht_create(int numEntries);
 extern void merged_ht_destroy(merged_ht* table);
 extern void merge(merged_ht* mergedtable, int l, int m, int r);
 extern void mergeSort(merged_ht* mergedTable, int l, int r);
-extern void setword(merged_ht *table, const char *string);
+extern void setword(merged_ht *table, const char *string, int i);
 
 #endif // _HT_H
