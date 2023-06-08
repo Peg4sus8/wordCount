@@ -269,7 +269,7 @@ typedef struct {
         // Effettuo l'ordinamento
         mergeSort(mergedTable, 0, numEntries - 1);
         merged_ht_destroy(mergedTable, numEntries);*/
-		
+
 		//Ordinamento
 		numEntries = ht_length(counts);
         merged_ht* mergedTable = merged_ht_create(numEntries);
@@ -283,7 +283,7 @@ typedef struct {
 
         // Riempio gli array per riordinarli (per evitare di toccare la HashTable)
         while (ht_next(&htit)) {
-			setword(&(mergedTable[q]), htit.key);
+			setword(mergedTable, htit.key, q);
             //strcpy(&mergedTable[q].word, htit.key);
             mergedTable[q].freq = *(int*) htit.value;
             q++;

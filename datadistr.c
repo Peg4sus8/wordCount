@@ -57,11 +57,14 @@ void distribute(DataDist *struc, Info info, int numtasks){
 
             struc[i].indexFiles[j] = count;
             //  Start FD:
-            //printf("ciao %d \n", info.dims[count]); // alcune volte itera troppo ????????????????
-            if(info.restDim[count] == info.dims[count])       //Se il file ancora non è stato diviso
+            if(info.restDim[count] == info.dims[count])     //Se il file ancora non è stato diviso
                 struc[i].startFd[j] = 0;
+            
             else                                        //Il file è gia stato diviso
                 struc[i].startFd[j] = struc[i-1].endFd[struc[i-1].nFile - 1] + 1; //dimensione iniziale - dimensione rimanente + 1 = punto di partenza da cui leggere
+            struc[i].size--; 
+            info.restDim[count]--;
+            
             //  EndFd
             if(struc[i].size >= info.restDim[count]){
                 struc[i].endFd[j] = EOF;
