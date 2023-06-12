@@ -17,7 +17,7 @@ void insertWord(ht* counts, char *temp, int countWord);
 int main(int argc, char *argv[]){
 	//Variabili generali per sitribuzione e lettura parole 
 	int myrank, numtasks, nfiles;
-	double start, middle, end;
+	double start, end;
 	char names[SIZE][MAX_NAME], *file, *path, *fpath, ch;
 	DataDist mydistr;
 	Info i;
@@ -98,7 +98,6 @@ int main(int argc, char *argv[]){
 	MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
 	MPI_Barrier(MPI_COMM_WORLD);
-	middle = MPI_Wtime() - start;
 	//printOneDistr(mydistr, names, myrank);
 	
 /*
@@ -311,8 +310,7 @@ typedef struct {
 	end = MPI_Wtime() - start;
 	
 	if(myrank == MASTER){
-		printf("Tempo di calcolo/distribuzione: %f\n", middle);
-		printf("Tempo totale: %f\n", end);
+		printf("--- %d --- Tempo totale: %f\n", myrank, end);
 	}
 	fflush(stdout);
 
