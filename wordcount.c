@@ -17,7 +17,7 @@ void insertWord(ht* counts, char *temp, int countWord);
 int main(int argc, char *argv[]){
 	//Variabili generali per sitribuzione e lettura parole 
 	int myrank, numtasks, nfiles;
-	double start, end;
+	double start, middle, end;
 	char names[SIZE][MAX_NAME], *file, *path, *fpath, ch;
 	DataDist mydistr;
 	Info i;
@@ -39,7 +39,6 @@ int main(int argc, char *argv[]){
 	char *outputfile, *ntask;
 	
 	//Inizializzazione
-	//counts = ht_create();
 	if (counts == NULL)
         exit_nomem();
 	
@@ -85,7 +84,6 @@ int main(int argc, char *argv[]){
 			strcpy(names[j], i.names[j]);
 		nfiles = i.n;
 		distribute(tmpDistr, i, numtasks);
-		
 		//printDistribution(tmpDistr, i, numtasks);
 		
 		MPI_Scatter(&tmpDistr[0], 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
@@ -97,7 +95,6 @@ int main(int argc, char *argv[]){
 		
 	MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
-	MPI_Barrier(MPI_COMM_WORLD);
 	//printOneDistr(mydistr, names, myrank);
 	
 /*
@@ -107,8 +104,7 @@ typedef struct {
     int *startFd;
     int *endFd;
     int size;
-} DataDist;
-*/
+} DataDist;*/
 	// ---------------------- Inizio conteggio parole ---------------------------------------
 	for(int i = 0; i < mydistr.nFile; i++){
 		char wordToAdd[WORD];
@@ -147,8 +143,6 @@ typedef struct {
 		} else {
 			while(1){
 				ch = fgetc(fp);
-				//if(ftell(fp) >= 142 && ftell(fp)<=152)	printf("%c\n", ch);	
-
 				if(ftell(fp) == mydistr.endFd[i]) {	//controlla che la parola appena letta sia terminata
 					if(ischar(ch)){
 						wordToAdd[j++] = ch;
@@ -188,8 +182,6 @@ typedef struct {
 		fclose(fp);
 	}
 	
-	//MPI_Barrier(MPI_COMM_WORLD);
-	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------
 	sizepack = sizeof(int) + (((sizeof(char) * wordlenght) + sizeof(int)) * ht_length(counts));
 	countpack = 4 + ((wordlenght + 4) * ht_length(counts));
@@ -197,7 +189,6 @@ typedef struct {
 	numel = ht_length(counts) * (wordlenght + 4) + 4;
 	it = ht_iterator(counts);
 	hashsend = malloc(sizepack);
-	//printf("(%d)>> %ld\n", myrank, ht_length(counts));
 	
 	if(myrank == MASTER){	
 		countselem  = malloc(numtasks * sizeof(int));
@@ -209,8 +200,7 @@ typedef struct {
 	if(myrank == MASTER){	//se sei master preparati a ricevere la gatherv
 		int tmp = 0;
 		dispelem[0] = 0;
-		sizetoreceive += countselem[0]; 	
-		
+		sizetoreceive += countselem[0]; 			
 		for(int i = 1; i < numtasks; i++){
 			dispelem[i] = tmp + countselem[i-1];
 			tmp += countselem[i-1];
@@ -225,7 +215,6 @@ typedef struct {
 			int countword = *((int*) it.value);
 			char key[wordlenght];
 			strcpy(key, it.key);
-			//printf("%s - %d\n", key, countword);
 			MPI_Pack(key, wordlenght, MPI_CHAR, hashsend, sizepack, &position, MPI_COMM_WORLD);
 			MPI_Pack(&countword, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
 		}
@@ -247,7 +236,7 @@ typedef struct {
                 insertWord(counts, temp, countWord);
             }	
         }
-
+		
 		//Ordinamento
 		numEntries = ht_length(counts);
         merged_ht* mergedTable = merged_ht_create(numEntries);
@@ -262,7 +251,6 @@ typedef struct {
         // Riempio gli array per riordinarli (per evitare di toccare la HashTable)
         while (ht_next(&htit)) {
 			setword(mergedTable, htit.key, q);
-            //strcpy(&mergedTable[q].word, htit.key);
             mergedTable[q].freq = *(int*) htit.value;
             q++;
         }
@@ -306,11 +294,10 @@ typedef struct {
 	}
 
 	// --------------------------------- Fine ---------------------------------
-	MPI_Barrier(MPI_COMM_WORLD);
 	end = MPI_Wtime() - start;
 	
 	if(myrank == MASTER){
-		printf("--- %d --- Tempo totale: %f\n", myrank, end);
+		printf("--- %d --- Tempo totale: %f\n\n", numtasks, end);
 	}
 	fflush(stdout);
 
@@ -327,7 +314,7 @@ typedef struct {
 		3) Implementazione della Hash Table							(Fatto)
 		4) Conteggio delle occorrenze di ogni parola				(Fatto)
 		5) Fusione dei risultati									(Fatto)
-		6) merge													()
+		6) merge													(Fatto)
 		
 		Idea per (1)
 		- Leggo la directory con la sua dimensione
