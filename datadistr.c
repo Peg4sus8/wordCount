@@ -29,6 +29,7 @@ typedef struct {
     (sarebbe la media approssimata per difetto) a MASTER, e si assegna il ceil
     della media(media approssimata per eccesso) a tutti gli altri processori.
 */
+
 void distribute(DataDist *struc, Info info, int numtasks){
     int somma = sommaDims(info.dims, info.n), 
         mediaFiles = myCeil((double)info.n/numtasks),
@@ -46,9 +47,6 @@ void distribute(DataDist *struc, Info info, int numtasks){
         count -> per i file in Info
     */
     count = 0;
-    //printf("somma iniziale: %d, size: %d\n", somma, struc[0].size);
-    //tot = 0;
-
 
     for(int i = 0; i < numtasks ; i++){      //Ciclo per i processori 
         struc[i].nFile = 0;
@@ -80,23 +78,13 @@ void distribute(DataDist *struc, Info info, int numtasks){
             }
             //  file aggiunto
             struc[i].nFile += 1;
-            /*if(struc[i].nFile == mediaFiles){
-                mediaFiles += 1;
-                struc[i].indexFiles = realloc(struc[i].indexFiles, mediaFiles * sizeof(int));
-                struc[i].startFd = realloc(struc[i].startFd, mediaFiles * sizeof(int));
-                struc[i].endFd = realloc(struc[i].endFd, mediaFiles * sizeof(int));
-            }   */      
+                
 
         }  
         
-        //tot += somma;
-        //printf("%d ) %d\n", i, somma);
-        //printf("Size rimanente: %d\n", struc[i].size);
     }
 
-
-    setSize(struc, somma, numtasks);
-    //printf("Somma finale: %d\n", tot);
+    setSize(struc, somma, numtasks);    
 }
 
 /*   
@@ -131,6 +119,7 @@ Info getInfo(){
             i.restDim[i.n] = buf.st_size; 
             i.n += 1;
         }
+
         if (i.n == numelem){
             numelem += 1;
             i.dims = realloc(i.dims, numelem * sizeof(int));
