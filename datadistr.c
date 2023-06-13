@@ -35,8 +35,8 @@ void distribute(DataDist *struc, Info info, int numtasks){
         mediaFiles = myCeil((double)info.n/numtasks),
         count, tot;          //Contatore universale per i file in info 
 
-    
-    setSize(struc, somma, numtasks);
+    //setSize(struc, somma, numtasks);
+    setSizeWS(struc, somma, numtasks);
 
     /*  ------------- Fine Distribzione dei valori ---------------- */
     /*  ----------------- Distribzione dei file ------------------- */
@@ -84,7 +84,8 @@ void distribute(DataDist *struc, Info info, int numtasks){
         
     }
 
-    setSize(struc, somma, numtasks);    
+    //setSize(struc, somma, numtasks);    
+    setSizeWS(struc, somma, numtasks);
 }
 
 /*   
@@ -182,7 +183,7 @@ void printDistribution(DataDist *d, Info info, int numtasks){
             printf(">> %s) - %d -> %d\n", info.names[k], d[i].startFd[j], d[i].endFd[j]);
         }
     }
-    printInfo(info);
+    //printInfo(info);
 }
 
 void setSize(DataDist *d, int sum, int numtasks){
@@ -192,6 +193,11 @@ void setSize(DataDist *d, int sum, int numtasks){
         else
             d[j].size = myfloor((double)sum/numtasks);
     }
+}
+
+void setSizeWS(DataDist *d, int sum, int numtasks){
+    int size = sum/16;
+    for(int i = 0; i < numtasks; i++)   d[i].size = size;
 }
 
 void printOneDistr(DataDist d, char names[][MAX_NAME], int rank){

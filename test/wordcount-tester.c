@@ -16,7 +16,7 @@ void insertWord(ht* counts, char *temp, int countWord);
 
 int main(int argc, char *argv[]){
 	//Variabili generali per sitribuzione e lettura parole 
-	int myrank, numtasks, nfiles;
+	int myrank, numtasks, nfiles, c=0;
 	double start, middle, end;
 	char names[SIZE][MAX_NAME], *file, *path, *fpath, ch;
 	DataDist mydistr;
@@ -134,6 +134,7 @@ typedef struct {
 		
 		if(mydistr.endFd[i] == EOF){
 			while((ch = fgetc(fp)) != EOF){
+				c++;
 				if(ischar(ch)){
 					wordToAdd[j++] = ch;
 				} else {
@@ -148,6 +149,7 @@ typedef struct {
 		} else {
 			while(1){
 				ch = fgetc(fp);
+				c++;
 				//if(ftell(fp) >= 142 && ftell(fp)<=152)	printf("%c\n", ch);	
 
 				if(ftell(fp) == mydistr.endFd[i]) {	//controlla che la parola appena letta sia terminata
@@ -155,6 +157,7 @@ typedef struct {
 						wordToAdd[j++] = ch;
 						while(1){
 							ch = fgetc(fp);
+							c++;
 							if(ischar(ch))
 								wordToAdd[j++] = ch;
 							else {
@@ -188,7 +191,7 @@ typedef struct {
 		}
 		fclose(fp);
 	}
-	
+	printf("%d, %d\n", myrank, c);
 	//MPI_Barrier(MPI_COMM_WORLD);
 	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------

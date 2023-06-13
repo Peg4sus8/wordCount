@@ -1,4 +1,7 @@
+
 make
+export OMPI_MCA_btl_vader_single_copy_mechanism=none
+
 mpirun --allow-run-as-root -np 1 ./main
 mpirun --allow-run-as-root -np 1 ./main
 mpirun --allow-run-as-root -np 1 ./main
@@ -46,6 +49,6 @@ mpirun --allow-run-as-root -np 15 ./main
 mpirun --allow-run-as-root -np 15 ./main 
 mpirun --allow-run-as-root -np 16 ./main 
 mpirun --allow-run-as-root -np 16 ./main 
-mpirun --allow-run-as-root -np 16 ./main 
+mpirun --allow-run-as-root -np 16 ./main
 
 make clean

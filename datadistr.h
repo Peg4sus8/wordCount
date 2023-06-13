@@ -38,6 +38,7 @@ extern int myCeil(double d);
 extern int myfloor(double d);
 extern void printDistribution(DataDist *d, Info info, int numtasks);
 extern void setSize(DataDist *d, int sum, int numtasks);
+extern void setSizeWS(DataDist *d, int sum, int numtasks);
 extern void printOneDistr(DataDist d, char names[][MAX_NAME], int rank);
 extern void exit_nomem(void);
 extern int ischar(char c);

@@ -16,8 +16,8 @@ void insertWord(ht* counts, char *temp, int countWord);
 
 int main(int argc, char *argv[]){
 	//Variabili generali per sitribuzione e lettura parole 
-	int myrank, numtasks, nfiles;
-	double start, middle, end;
+	int myrank, numtasks, nfiles, c=0;
+	double start, end;
 	char names[SIZE][MAX_NAME], *file, *path, *fpath, ch;
 	DataDist mydistr;
 	Info i;
@@ -39,6 +39,7 @@ int main(int argc, char *argv[]){
 	char *outputfile, *ntask;
 	
 	//Inizializzazione
+	//counts = ht_create();
 	if (counts == NULL)
         exit_nomem();
 	
@@ -84,6 +85,7 @@ int main(int argc, char *argv[]){
 			strcpy(names[j], i.names[j]);
 		nfiles = i.n;
 		distribute(tmpDistr, i, numtasks);
+		
 		//printDistribution(tmpDistr, i, numtasks);
 		
 		MPI_Scatter(&tmpDistr[0], 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
@@ -104,7 +106,8 @@ typedef struct {
     int *startFd;
     int *endFd;
     int size;
-} DataDist;*/
+} DataDist;
+*/
 	// ---------------------- Inizio conteggio parole ---------------------------------------
 	for(int i = 0; i < mydistr.nFile; i++){
 		char wordToAdd[WORD];
@@ -143,11 +146,12 @@ typedef struct {
 		} else {
 			while(1){
 				ch = fgetc(fp);
-				if(ftell(fp) == mydistr.endFd[i]) {	//controlla che la parola appena letta sia terminata
+				if(ftell(fp) == mydistr.endFd[i]) {	//se sei alla fine della tua porzione controlla che la parola appena letta sia terminata
 					if(ischar(ch)){
 						wordToAdd[j++] = ch;
 						while(1){
 							ch = fgetc(fp);
+							c++;
 							if(ischar(ch))
 								wordToAdd[j++] = ch;
 							else {
@@ -166,7 +170,7 @@ typedef struct {
 					}
 					break;			
 				}
-
+				//Altrimenti non sei alla fine quindi continua a controllare
 				if(ischar(ch)){
 					wordToAdd[j++] = ch;
 				} else {
@@ -200,7 +204,8 @@ typedef struct {
 	if(myrank == MASTER){	//se sei master preparati a ricevere la gatherv
 		int tmp = 0;
 		dispelem[0] = 0;
-		sizetoreceive += countselem[0]; 			
+		sizetoreceive += countselem[0]; 	
+		
 		for(int i = 1; i < numtasks; i++){
 			dispelem[i] = tmp + countselem[i-1];
 			tmp += countselem[i-1];
@@ -236,7 +241,7 @@ typedef struct {
                 insertWord(counts, temp, countWord);
             }	
         }
-		
+
 		//Ordinamento
 		numEntries = ht_length(counts);
         merged_ht* mergedTable = merged_ht_create(numEntries);
@@ -294,10 +299,11 @@ typedef struct {
 	}
 
 	// --------------------------------- Fine ---------------------------------
+	MPI_Barrier(MPI_COMM_WORLD);
 	end = MPI_Wtime() - start;
 	
 	if(myrank == MASTER){
-		printf("--- %d --- Tempo totale: %f\n\n", numtasks, end);
+		printf("--- %d --- Tempo totale: %f\n", numtasks, end);
 	}
 	fflush(stdout);
 
@@ -314,7 +320,7 @@ typedef struct {
 		3) Implementazione della Hash Table							(Fatto)
 		4) Conteggio delle occorrenze di ogni parola				(Fatto)
 		5) Fusione dei risultati									(Fatto)
-		6) merge													(Fatto)
+		6) merge													()
 		
 		Idea per (1)
 		- Leggo la directory con la sua dimensione
@@ -371,3 +377,4 @@ void insertWord(ht* counts, char *temp, int countWord){
         }
     }
 }
+
