@@ -28,3 +28,7 @@ L'obiettivo di questo progetto riguarda la creazione di un applicativo che reali
 3. L'ultima fase prevede che ciascuno dei processi invii i propri istogrammi locali al processo MASTER, che avrà solo bisogno di raccogliere tutte queste informazioni. Ovviamente ci saranno parole duplicate tra i processi, quindi il MASTER dovrebbe creare un file in formato .csv in ordine decrescente in base alla frequenza delle parole e, a parità di quest'ultima, in ordine alfabetico.
 ## Descrizione dell'implementazione
 ### Divisione del carico
+Prima di iniziare lo sviluppo della soluzione è stato necessario definire come prendere i file da leggere e dove inserire le informaazioni relative ad esse. E' stata creta una struttura dati 'Info' definita come mostrato di seguito, riempita dalla funzione <code>getInfo()</code> che va a leggere tutti i file nella directory <code>./files</code>. 
+'''C
+
+'''
