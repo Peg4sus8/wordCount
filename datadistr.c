@@ -35,8 +35,8 @@ void distribute(DataDist *struc, Info info, int numtasks){
         mediaFiles = myCeil((double)info.n/numtasks),
         count, tot;          //Contatore universale per i file in info 
 
-    //setSize(struc, somma, numtasks);
-    setSizeWS(struc, somma, numtasks);
+    setSize(struc, somma, numtasks);
+    //setSizeWS(struc, somma, numtasks);
 
     /*  ------------- Fine Distribzione dei valori ---------------- */
     /*  ----------------- Distribzione dei file ------------------- */
@@ -84,8 +84,8 @@ void distribute(DataDist *struc, Info info, int numtasks){
         
     }
 
-    //setSize(struc, somma, numtasks);    
-    setSizeWS(struc, somma, numtasks);
+    setSize(struc, somma, numtasks);    
+    //setSizeWS(struc, somma, numtasks);
 }
 
 /*   
