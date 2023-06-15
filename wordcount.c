@@ -137,8 +137,7 @@ typedef struct {
 					if(ischar(buffer[k])) 	wordToAdd[j++] = buffer[k];
 					else {
 						wordToAdd[j] = '\0';
-						if(strlen(wordToAdd) > 0){	
-							//printf("%d, %s\n", myrank, wordToAdd);
+						if(strlen(wordToAdd) > 0){
 							insertWord(counts, wordToAdd, 1);
 						}
 						j = 0;
@@ -150,7 +149,6 @@ typedef struct {
 		} else {
 			if((mydistr.endFd[i] - ftell(fp)) < row)	{
 				row = mydistr.endFd[i] - ftell(fp);
-				flag = 1;	
 			}	
 			//se il valore della riga che ho inserito è minore dei bytes che devo leggere allora mi segno quanto leggere
 			while(fgets(buffer, row, fp) != NULL){
@@ -160,7 +158,6 @@ typedef struct {
 					else{
 						wordToAdd[j] = '\0';
 						if(strlen(wordToAdd) > 0){
-							//printf("%d, %s\n", myrank, wordToAdd);
 							insertWord(counts, wordToAdd, 1);
 						}
 						strcpy(wordToAdd, "");
@@ -169,10 +166,7 @@ typedef struct {
 				}	// end for
 				
 				if(((mydistr.endFd[i] - ftell(fp)) < row)){
-					//printf("%d,, %d - %ld\n", myrank, mydistr.endFd[i], ftell(fp));
 					row = mydistr.endFd[i] - ftell(fp);
-					//flag = 1;
-					//printf("%d,, %d\n", myrank, row);
 				}
 				if(row == 1){
 					char ch = fgetc(fp);
@@ -183,7 +177,6 @@ typedef struct {
 						}
 						wordToAdd[j] = '\0';
 						if(strlen(wordToAdd) > 0){
-							//printf("%d, %s\n", myrank, wordToAdd);
 							insertWord(counts, wordToAdd, 1);
 						}
 						strcpy(wordToAdd, "");
@@ -191,7 +184,6 @@ typedef struct {
 					} else {
 						wordToAdd[j] = '\0';
 						if(strlen(wordToAdd) > 0){
-							//printf("%d, %s\n", myrank, wordToAdd);
 							insertWord(counts, wordToAdd, 1);
 						}
 						strcpy(wordToAdd, "");
@@ -204,8 +196,6 @@ typedef struct {
 		}
 	}
 	
-	//MPI_Barrier(MPI_COMM_WORLD);
-	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------
 	sizepack = sizeof(int) + (((sizeof(char) * wordlenght) + sizeof(int)) * ht_length(counts));
 	countpack = 4 + ((wordlenght + 4) * ht_length(counts));
@@ -213,8 +203,6 @@ typedef struct {
 	numel = ht_length(counts) * (wordlenght + 4) + 4;
 	it = ht_iterator(counts);
 	hashsend = malloc(sizepack);
-	//printf("(%d)>> %ld\n", myrank, ht_length(counts));
-	
 	if(myrank == MASTER){	
 		countselem  = malloc(numtasks * sizeof(int));
 		dispelem = malloc(numtasks * sizeof(int));
@@ -241,7 +229,6 @@ typedef struct {
 			int countword = *((int*) it.value);
 			char key[wordlenght];
 			strcpy(key, it.key);
-			//printf("%s - %d\n", key, countword);
 			MPI_Pack(key, wordlenght, MPI_CHAR, hashsend, sizepack, &position, MPI_COMM_WORLD);
 			MPI_Pack(&countword, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
 		}
@@ -278,7 +265,6 @@ typedef struct {
         // Riempio gli array per riordinarli (per evitare di toccare la HashTable)
         while (ht_next(&htit)) {
 			setword(mergedTable, htit.key, q);
-            //strcpy(&mergedTable[q].word, htit.key);
             mergedTable[q].freq = *(int*) htit.value;
             q++;
         }
