@@ -16,7 +16,7 @@ void insertWord(ht* counts, char *temp, int countWord);
 
 int main(int argc, char *argv[]){
 	//Variabili generali per sitribuzione e lettura parole 
-	int myrank, numtasks, nfiles, c=0;
+	int myrank, numtasks, nfiles, row = ROW, flag = 0;
 	double start, middle, end;
 	char names[SIZE][MAX_NAME], *file, *path, *fpath, ch;
 	DataDist mydistr;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
 	//variabili per MPI_PACK
 	int wordlenght = WORD,
 		namelenght = MAX_NAME,
-		direclenght = DIRECTORY, 
+		direclenght = DIRECTORY,
 		sizepack, countpack, position, sizetoreceive, numel, 
 		*countselem, *dispelem;
 	char *hashsend, *htsreceived;
@@ -112,7 +112,7 @@ typedef struct {
 */
 	// ---------------------- Inizio conteggio parole ---------------------------------------
 	for(int i = 0; i < mydistr.nFile; i++){
-		char wordToAdd[WORD];
+		char wordToAdd[WORD], buffer[ROW];
 		int j = 0;
 		strcpy(file, fpath);
 		strcat(file, names[mydistr.indexFiles[i]]);		
@@ -131,67 +131,80 @@ typedef struct {
 					;
 			}
 		}	
-		
+		//	----------------------------- CHI NON ARRIVA A -1 NON AGGIUNGE PAROLE ----------------------------------------------
 		if(mydistr.endFd[i] == EOF){
-			while((ch = fgetc(fp)) != EOF){
-				c++;
-				if(ischar(ch)){
-					wordToAdd[j++] = ch;
-				} else {
-					wordToAdd[j] = '\0';
-					if(strlen(wordToAdd) > 0){
-						insertWord(counts, wordToAdd, 1);
-					}
-					strcpy(wordToAdd, "");
-					j = 0;
-				}
-			}	
-		} else {
-			while(1){
-				ch = fgetc(fp);
-				c++;
-				//if(ftell(fp) >= 142 && ftell(fp)<=152)	printf("%c\n", ch);	
-
-				if(ftell(fp) == mydistr.endFd[i]) {	//controlla che la parola appena letta sia terminata
-					if(ischar(ch)){
-						wordToAdd[j++] = ch;
-						while(1){
-							ch = fgetc(fp);
-							c++;
-							if(ischar(ch))
-								wordToAdd[j++] = ch;
-							else {
-								wordToAdd[j] = '\0';
-								if(strlen(wordToAdd) > 0){						
-									insertWord(counts, wordToAdd, 1);
-								}
-								break;
-							}
-						}		
-					} else{
+			while(fgets(buffer, ROW, fp) != NULL){
+				for(int k = 0; k < strlen(buffer); k++){
+					if(ischar(buffer[k])) 	wordToAdd[j++] = buffer[k];
+					else {
 						wordToAdd[j] = '\0';
-						if(strlen(wordToAdd) > 0){						
+						if(strlen(wordToAdd) > 0){	
+							//printf("%d, %s\n", myrank, wordToAdd);
 							insertWord(counts, wordToAdd, 1);
 						}
+						j = 0;
+						strcpy(wordToAdd, "");
 					}
-					break;			
-				}
-
-				if(ischar(ch)){
-					wordToAdd[j++] = ch;
-				} else {
-					wordToAdd[j] = '\0';
-					if(strlen(wordToAdd) > 0){						
-						insertWord(counts, wordToAdd, 1);
-					}
-					strcpy(wordToAdd, "");
-					j = 0;
 				}
 			}
+			fclose(fp);
+		} else {
+			if((mydistr.endFd[i] - ftell(fp)) < row)	{
+				row = mydistr.endFd[i] - ftell(fp);
+				flag = 1;	
+			}	
+			//se il valore della riga che ho inserito è minore dei bytes che devo leggere allora mi segno quanto leggere
+			while(fgets(buffer, row, fp) != NULL){
+				for(int k = 0; k < strlen(buffer); k++){
+					if(ischar(buffer[k]))
+						wordToAdd[j++] = buffer[k];
+					else{
+						wordToAdd[j] = '\0';
+						if(strlen(wordToAdd) > 0){
+							//printf("%d, %s\n", myrank, wordToAdd);
+							insertWord(counts, wordToAdd, 1);
+						}
+						strcpy(wordToAdd, "");
+						j = 0;
+					}
+				}	// end for
+				
+				if(((mydistr.endFd[i] - ftell(fp)) < row)){
+					//printf("%d,, %d - %ld\n", myrank, mydistr.endFd[i], ftell(fp));
+					row = mydistr.endFd[i] - ftell(fp);
+					//flag = 1;
+					//printf("%d,, %d\n", myrank, row);
+				}
+				if(row == 1){
+					char ch = fgetc(fp);
+					if(ischar(ch)){
+						while(ischar(ch)){
+							wordToAdd[j++] = ch;
+							ch = fgetc(fp);
+						}
+						wordToAdd[j] = '\0';
+						if(strlen(wordToAdd) > 0){
+							//printf("%d, %s\n", myrank, wordToAdd);
+							insertWord(counts, wordToAdd, 1);
+						}
+						strcpy(wordToAdd, "");
+						j = 0;
+					} else {
+						wordToAdd[j] = '\0';
+						if(strlen(wordToAdd) > 0){
+							//printf("%d, %s\n", myrank, wordToAdd);
+							insertWord(counts, wordToAdd, 1);
+						}
+						strcpy(wordToAdd, "");
+						j = 0;
+					} 
+					break;
+				}
+				
+			} 	// end while
 		}
-		fclose(fp);
 	}
-	printf("%d, %d\n", myrank, c);
+	
 	//MPI_Barrier(MPI_COMM_WORLD);
 	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------

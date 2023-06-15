@@ -16,8 +16,8 @@ void insertWord(ht* counts, char *temp, int countWord);
 
 int main(int argc, char *argv[]){
 	//Variabili generali per sitribuzione e lettura parole 
-	int myrank, numtasks, nfiles;
-	double start, middle, end;
+	int myrank, numtasks, nfiles, row = ROW, flag = 0;
+	double start, end;
 	char names[SIZE][MAX_NAME], *file, *path, *fpath, ch;
 	DataDist mydistr;
 	Info i;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
 	//variabili per MPI_PACK
 	int wordlenght = WORD,
 		namelenght = MAX_NAME,
-		direclenght = DIRECTORY, 
+		direclenght = DIRECTORY,
 		sizepack, countpack, position, sizetoreceive, numel, 
 		*countselem, *dispelem;
 	char *hashsend, *htsreceived;
@@ -39,6 +39,7 @@ int main(int argc, char *argv[]){
 	char *outputfile, *ntask;
 	
 	//Inizializzazione
+	//counts = ht_create();
 	if (counts == NULL)
         exit_nomem();
 	
@@ -84,6 +85,7 @@ int main(int argc, char *argv[]){
 			strcpy(names[j], i.names[j]);
 		nfiles = i.n;
 		distribute(tmpDistr, i, numtasks);
+		
 		//printDistribution(tmpDistr, i, numtasks);
 		
 		MPI_Scatter(&tmpDistr[0], 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
@@ -95,6 +97,7 @@ int main(int argc, char *argv[]){
 		
 	MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 	//printOneDistr(mydistr, names, myrank);
 	
 /*
@@ -104,10 +107,11 @@ typedef struct {
     int *startFd;
     int *endFd;
     int size;
-} DataDist;*/
+} DataDist;
+*/
 	// ---------------------- Inizio conteggio parole ---------------------------------------
 	for(int i = 0; i < mydistr.nFile; i++){
-		char wordToAdd[WORD];
+		char wordToAdd[WORD], buffer[ROW];
 		int j = 0;
 		strcpy(file, fpath);
 		strcat(file, names[mydistr.indexFiles[i]]);		
@@ -126,61 +130,81 @@ typedef struct {
 					;
 			}
 		}	
-		
+		//	----------------------------- CHI NON ARRIVA A -1 NON AGGIUNGE PAROLE ----------------------------------------------
 		if(mydistr.endFd[i] == EOF){
-			while((ch = fgetc(fp)) != EOF){
-				if(ischar(ch)){
-					wordToAdd[j++] = ch;
-				} else {
-					wordToAdd[j] = '\0';
-					if(strlen(wordToAdd) > 0){
-						insertWord(counts, wordToAdd, 1);
-					}
-					strcpy(wordToAdd, "");
-					j = 0;
-				}
-			}	
-		} else {
-			while(1){
-				ch = fgetc(fp);
-				if(ftell(fp) == mydistr.endFd[i]) {	//controlla che la parola appena letta sia terminata
-					if(ischar(ch)){
-						wordToAdd[j++] = ch;
-						while(1){
-							ch = fgetc(fp);
-							if(ischar(ch))
-								wordToAdd[j++] = ch;
-							else {
-								wordToAdd[j] = '\0';
-								if(strlen(wordToAdd) > 0){						
-									insertWord(counts, wordToAdd, 1);
-								}
-								break;
-							}
-						}		
-					} else{
+			while(fgets(buffer, ROW, fp) != NULL){
+				for(int k = 0; k < strlen(buffer); k++){
+					if(ischar(buffer[k])) 	wordToAdd[j++] = buffer[k];
+					else {
 						wordToAdd[j] = '\0';
-						if(strlen(wordToAdd) > 0){						
+						if(strlen(wordToAdd) > 0){	
+							//printf("%d, %s\n", myrank, wordToAdd);
 							insertWord(counts, wordToAdd, 1);
 						}
+						j = 0;
+						strcpy(wordToAdd, "");
 					}
-					break;			
-				}
-
-				if(ischar(ch)){
-					wordToAdd[j++] = ch;
-				} else {
-					wordToAdd[j] = '\0';
-					if(strlen(wordToAdd) > 0){						
-						insertWord(counts, wordToAdd, 1);
-					}
-					strcpy(wordToAdd, "");
-					j = 0;
 				}
 			}
+			fclose(fp);
+		} else {
+			if((mydistr.endFd[i] - ftell(fp)) < row)	{
+				row = mydistr.endFd[i] - ftell(fp);
+				flag = 1;	
+			}	
+			//se il valore della riga che ho inserito è minore dei bytes che devo leggere allora mi segno quanto leggere
+			while(fgets(buffer, row, fp) != NULL){
+				for(int k = 0; k < strlen(buffer); k++){
+					if(ischar(buffer[k]))
+						wordToAdd[j++] = buffer[k];
+					else{
+						wordToAdd[j] = '\0';
+						if(strlen(wordToAdd) > 0){
+							//printf("%d, %s\n", myrank, wordToAdd);
+							insertWord(counts, wordToAdd, 1);
+						}
+						strcpy(wordToAdd, "");
+						j = 0;
+					}
+				}	// end for
+				
+				if(((mydistr.endFd[i] - ftell(fp)) < row)){
+					//printf("%d,, %d - %ld\n", myrank, mydistr.endFd[i], ftell(fp));
+					row = mydistr.endFd[i] - ftell(fp);
+					//flag = 1;
+					//printf("%d,, %d\n", myrank, row);
+				}
+				if(row == 1){
+					char ch = fgetc(fp);
+					if(ischar(ch)){
+						while(ischar(ch)){
+							wordToAdd[j++] = ch;
+							ch = fgetc(fp);
+						}
+						wordToAdd[j] = '\0';
+						if(strlen(wordToAdd) > 0){
+							//printf("%d, %s\n", myrank, wordToAdd);
+							insertWord(counts, wordToAdd, 1);
+						}
+						strcpy(wordToAdd, "");
+						j = 0;
+					} else {
+						wordToAdd[j] = '\0';
+						if(strlen(wordToAdd) > 0){
+							//printf("%d, %s\n", myrank, wordToAdd);
+							insertWord(counts, wordToAdd, 1);
+						}
+						strcpy(wordToAdd, "");
+						j = 0;
+					} 
+					break;
+				}
+				
+			} 	// end while
 		}
-		fclose(fp);
 	}
+	
+	//MPI_Barrier(MPI_COMM_WORLD);
 	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------
 	sizepack = sizeof(int) + (((sizeof(char) * wordlenght) + sizeof(int)) * ht_length(counts));
@@ -189,6 +213,7 @@ typedef struct {
 	numel = ht_length(counts) * (wordlenght + 4) + 4;
 	it = ht_iterator(counts);
 	hashsend = malloc(sizepack);
+	//printf("(%d)>> %ld\n", myrank, ht_length(counts));
 	
 	if(myrank == MASTER){	
 		countselem  = malloc(numtasks * sizeof(int));
@@ -200,7 +225,8 @@ typedef struct {
 	if(myrank == MASTER){	//se sei master preparati a ricevere la gatherv
 		int tmp = 0;
 		dispelem[0] = 0;
-		sizetoreceive += countselem[0]; 			
+		sizetoreceive += countselem[0]; 	
+		
 		for(int i = 1; i < numtasks; i++){
 			dispelem[i] = tmp + countselem[i-1];
 			tmp += countselem[i-1];
@@ -215,6 +241,7 @@ typedef struct {
 			int countword = *((int*) it.value);
 			char key[wordlenght];
 			strcpy(key, it.key);
+			//printf("%s - %d\n", key, countword);
 			MPI_Pack(key, wordlenght, MPI_CHAR, hashsend, sizepack, &position, MPI_COMM_WORLD);
 			MPI_Pack(&countword, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
 		}
@@ -236,7 +263,7 @@ typedef struct {
                 insertWord(counts, temp, countWord);
             }	
         }
-		
+
 		//Ordinamento
 		numEntries = ht_length(counts);
         merged_ht* mergedTable = merged_ht_create(numEntries);
@@ -251,6 +278,7 @@ typedef struct {
         // Riempio gli array per riordinarli (per evitare di toccare la HashTable)
         while (ht_next(&htit)) {
 			setword(mergedTable, htit.key, q);
+            //strcpy(&mergedTable[q].word, htit.key);
             mergedTable[q].freq = *(int*) htit.value;
             q++;
         }
@@ -294,10 +322,11 @@ typedef struct {
 	}
 
 	// --------------------------------- Fine ---------------------------------
+	MPI_Barrier(MPI_COMM_WORLD);
 	end = MPI_Wtime() - start;
 	
 	if(myrank == MASTER){
-		printf("--- %d --- Tempo totale: %f\n\n", numtasks, end);
+		printf("--- %d --- Tempo totale: %f\n", numtasks, end);
 	}
 	fflush(stdout);
 
@@ -314,7 +343,7 @@ typedef struct {
 		3) Implementazione della Hash Table							(Fatto)
 		4) Conteggio delle occorrenze di ogni parola				(Fatto)
 		5) Fusione dei risultati									(Fatto)
-		6) merge													(Fatto)
+		6) merge													()
 		
 		Idea per (1)
 		- Leggo la directory con la sua dimensione
@@ -371,3 +400,4 @@ void insertWord(ht* counts, char *temp, int countWord){
         }
     }
 }
+

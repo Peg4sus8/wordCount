@@ -1,20 +1,20 @@
 make
-mpirun --allow-run-as-root -np 1 ./main
-mpirun --allow-run-as-root -np 2 ./main
-mpirun --allow-run-as-root -np 3 ./main 
-mpirun --allow-run-as-root -np 4 ./main
-mpirun --allow-run-as-root -np 5 ./main 
-mpirun --allow-run-as-root -np 6 ./main 
-mpirun --allow-run-as-root -np 7 ./main 
-mpirun --allow-run-as-root -np 8 ./main 
-mpirun --allow-run-as-root -np 9 ./main 
-mpirun --allow-run-as-root -np 10 ./main 
-mpirun --allow-run-as-root -np 11 ./main 
-mpirun --allow-run-as-root -np 12 ./main 
-mpirun --allow-run-as-root -np 13 ./main 
-mpirun --allow-run-as-root -np 14 ./main 
-mpirun --allow-run-as-root -np 15 ./main 
-mpirun --allow-run-as-root -np 16 ./main 
+mpirun --allow-run-as-root -np 1 ./test
+mpirun --allow-run-as-root -np 2 ./test
+mpirun --allow-run-as-root -np 3 ./test 
+mpirun --allow-run-as-root -np 4 ./test
+mpirun --allow-run-as-root -np 5 ./test 
+mpirun --allow-run-as-root -np 6 ./test 
+mpirun --allow-run-as-root -np 7 ./test 
+mpirun --allow-run-as-root -np 8 ./test 
+mpirun --allow-run-as-root -np 9 ./test 
+mpirun --allow-run-as-root -np 10 ./test 
+mpirun --allow-run-as-root -np 11 ./test 
+mpirun --allow-run-as-root -np 12 ./test 
+mpirun --allow-run-as-root -np 13 ./test 
+mpirun --allow-run-as-root -np 14 ./test 
+mpirun --allow-run-as-root -np 15 ./test 
+mpirun --allow-run-as-root -np 16 ./test 
 cd output
 diff oracle.csv output1.csv
 diff oracle.csv output2.csv

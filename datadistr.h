@@ -9,6 +9,7 @@
 #define SIZE 40         //numero di file massimi nella directory
 #define MASTER 0
 #define DIRECTORY 200   //numero di caratteri per scrivere la directory
+#define ROW 4096
 
 //  Definizione strutture 
 

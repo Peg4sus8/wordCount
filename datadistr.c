@@ -78,8 +78,6 @@ void distribute(DataDist *struc, Info info, int numtasks){
             }
             //  file aggiunto
             struc[i].nFile += 1;
-                
-
         }  
         
     }
