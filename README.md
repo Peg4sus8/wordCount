@@ -160,7 +160,7 @@ void setSize(DataDist *d, int sum, int numtasks){
     }
 }
 ```
-Con questo sono state definite le strutture dati e le funzioni utilizzate per la distribuzione del carico. Ora passiamo alla definizione del programma cheeseguirà il conteggio. Come prima cosa tutti i processi inizializzano una hashTable in cui inserire il conteggio delle parole e un array di stringhe in cui inserire i nomi dei files, il MASTER definisce un array di dataDistr di lunghezza <code>numtasks<\code>, nel quale inserirà i risultati della funzione <code>distribute()</code>, e crea un MPI_Datatype da usare per passare la distribuzione in modo più ottimale.
+Con questo sono state definite le strutture dati e le funzioni utilizzate per la distribuzione del carico. Ora passiamo alla definizione del programma cheeseguirà il conteggio. Come prima cosa tutti i processi inizializzano una hashTable in cui inserire il conteggio delle parole e un array di stringhe in cui inserire i nomi dei files, il MASTER definisce un array di dataDistr di lunghezza <code>numtasks</code>, nel quale inserirà i risultati della funzione <code>distribute()</code>, e crea un MPI_Datatype da usare per passare la distribuzione in modo più ottimale.
 ```C
 ht *counts = ht_create();
 //---------------- Creo il datatype per la distribuzione dei dati ----------------------------	
