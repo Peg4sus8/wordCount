@@ -204,6 +204,7 @@ MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
 
 ```
+### Conteggio delle parole
 Dal momento in cui ricevono tutte le informazioni relative al carico di lavoro, i processori iniziano a contare le parole. Come prima cosa aprono i file e controllano come dovranno leggere, infatti:
 * Nel caso in cui il file non debba essere letto dall'inizio(<code>startFd!=0</code>) allora bisognerà fare una fseek al punto di inizio e si dovrà controllare che non ci sia una parola divisa, quindi se il carattere relativo al byte di inizio è una lettera si controlla il precedente e, nel caso in cui sia ancora una lettera, si cicla fino al primo carattere dopo la fine della parola
 ```c
