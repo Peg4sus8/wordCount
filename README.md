@@ -186,25 +186,100 @@ ht *counts = ht_create();
 Creato il datatype, il MASTER inizia a calcolare la distribuzione e la manda a tutti i processi tramite una <code>MPI_Scatter</code> e invia l'array dei nomi dei files con il numero di file totali nella directory tramite una <code>MPI_Bcast</code>
 ```C
 if(myrank == MASTER){
-		DataDist tmpDistr[numtasks];
-		i = getInfo();
+	DataDist tmpDistr[numtasks];
+	i = getInfo();
 
-		for(int j = 0; j < i.n; j++)
-			strcpy(names[j], i.names[j]);
-		nfiles = i.n;
-		distribute(tmpDistr, i, numtasks);
-		MPI_Scatter(&tmpDistr[0], 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
-		free(i.dims);
-		free(i.names);
-		free(i.restDim);
-	}	else 
-		MPI_Scatter(NULL, 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
-		
-	MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
-	MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
+	for(int j = 0; j < i.n; j++)
+		strcpy(names[j], i.names[j]);
+	nfiles = i.n;
+	distribute(tmpDistr, i, numtasks);
+	MPI_Scatter(&tmpDistr[0], 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
+	free(i.dims);
+	free(i.names);
+	free(i.restDim);
+}else 
+	MPI_Scatter(NULL, 1, MPI_DATA_DISTR, &mydistr, 1, MPI_DATA_DISTR, MASTER, MPI_COMM_WORLD);
+	
+MPI_Bcast(&nfiles, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
+MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
 
 ```
-
-
-
+Dal momento in cui ricevono tutte le informazioni relative al carico di lavoro, i processori iniziano a contare le parole. Come prima cosa aprono i file e controllano come dovranno leggere, infatti:
+* Nel caso in cui il file non debba essere letto dall'inizio(<code>startFd!=0</code>) allora bisognerà fare una fseek al punto di inizio e si dovrà controllare che non ci sia una parola divisa, quindi se il carattere relativo al byte di inizio è una lettera si controlla il precedente e, nel caso in cui sia ancora una lettera, si cicla fino al primo carattere dopo la fine della parola
+```c
+if(mydistr.startFd[i] != 0)	{		//controlla se il carattere precedente è un char
+	fseek(fp, mydistr.startFd[i] - 1, SEEK_SET);
+	if(ischar(fgetc(fp))){			//se è un char allora skippa la parola
+		fseek(fp, -2, SEEK_CUR);
+		while(ischar(fgetc(fp)))
+			;
+	}
+}	
+```
+* Nel caso in cui il file non debba essere letto fino alla fine allora durante l'esecuzione bisogna controllare se ci sono ancora abbastanza caratteri per continuare la lettura per blocchi di ROW(4096) e nel caso in cui non ce ne siano a sufficienza bisogna inserire il numero rimanente da leggere. In più, alla fine del conteggio bisogna controllare se c'è una parola non complete e, nel caso, bisogna completarla.
+```c
+if((mydistr.endFd[i] - ftell(fp)) < row){
+	row = mydistr.endFd[i] - ftell(fp);
+}	//se il valore della riga che ho inserito è minore dei bytes che devo leggere allora mi segno quanto leggere
+while(fgets(buffer, row, fp) != NULL){
+	for(int k = 0; k < strlen(buffer); k++){
+		if(ischar(buffer[k]))
+			wordToAdd[j++] = buffer[k];
+		else{
+			wordToAdd[j] = '\0';
+			if(strlen(wordToAdd) > 0){
+				insertWord(counts, wordToAdd, 1);
+			}
+			strcpy(wordToAdd, "");
+			j = 0;
+		}
+	}// end for
+			
+	if(((mydistr.endFd[i] - ftell(fp)) < row)){
+		row = mydistr.endFd[i] - ftell(fp);
+	}
+	if(row == 1){
+		char ch = fgetc(fp);
+		if(ischar(ch)){
+			while(ischar(ch)){
+				wordToAdd[j++] = ch;
+				ch = fgetc(fp);
+			}
+			wordToAdd[j] = '\0';
+			if(strlen(wordToAdd) > 0){
+				insertWord(counts, wordToAdd, 1);
+			}
+			strcpy(wordToAdd, "");
+			j = 0;
+		} else {
+			wordToAdd[j] = '\0';
+			if(strlen(wordToAdd) > 0){
+				insertWord(counts, wordToAdd, 1);
+			}
+			strcpy(wordToAdd, "");
+			j = 0;
+		} 
+		break;
+	}
+}
+```
+* Nel caso in cui il file debba essere letto fino alla fine si legge per blocchi di ROW(4096) finchè la fgets non restituuisce <code>NULL</code>
+```c
+if(mydistr.endFd[i] == EOF){
+	while(fgets(buffer, ROW, fp) != NULL){
+		for(int k = 0; k < strlen(buffer); k++){
+			if(ischar(buffer[k])) 	wordToAdd[j++] = buffer[k];
+			else {
+				wordToAdd[j] = '\0';
+				if(strlen(wordToAdd) > 0){
+					insertWord(counts, wordToAdd, 1);
+				}
+				j = 0;
+				strcpy(wordToAdd, "");
+			}
+		}
+	}
+	fclose(fp);
+}
+```
 
