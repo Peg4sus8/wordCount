@@ -283,4 +283,224 @@ if(mydistr.endFd[i] == EOF){
 	fclose(fp);
 }
 ```
+### Fusione dei risultati e ordinamento
+A questo punto, ogni processo ha la sua HashTable con le sue parole. Ciò che faranno i processi ora è impacchettare i dati letti in un buffer (tramite la funzione MPI_Pack()), che verrà mandato al processo MASTER tramite una MPI_Gatherv(). Prima di ciò, viene effettuata una MPI_Gather(), che permetterà al processo MASTER di sapere quanto sono grandi le tabelle di ogni processo, in modo tale da prepararsi a ricevere tutti i dati da tutti i processi. Viene utilizzata la struttura dati HashTableIterator, che permette di scorrere la tabella per prendere i valori contenuti in essa. 
+```c
+sizepack = sizeof(int) + (((sizeof(char) * wordlenght) + sizeof(int)) * ht_length(counts));
+countpack = 4 + ((wordlenght + 4) * ht_length(counts));
+position = 0;
+numel = ht_length(counts) * (wordlenght + 4) + 4;
+it = ht_iterator(counts);
+hashsend = malloc(sizepack);
+if(myrank == MASTER){	
+	countselem  = malloc(numtasks * sizeof(int));
+	dispelem = malloc(numtasks * sizeof(int));
+}
+MPI_Gather(&numel, 1, MPI_INT, countselem, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
+if(myrank == MASTER){	//se sei master preparati a ricevere la gatherv
+	int tmp = 0;
+	dispelem[0] = 0;
+	sizetoreceive += countselem[0]; 	
+	
+	for(int i = 1; i < numtasks; i++){
+		dispelem[i] = tmp + countselem[i-1];
+		tmp += countselem[i-1];
+		sizetoreceive += countselem[i];
+	}
+	htsreceived = malloc((sizetoreceive + 1) * sizeof(char));	
+} else {	//altrimenti impacchettate i dati
+	int length = ht_length(counts);
+	MPI_Pack(&length, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
+	for(int i = 0; i < length; i++){
+		ht_next(&it);
+		int countword = *((int*) it.value);
+		char key[wordlenght];
+		strcpy(key, it.key);
+		MPI_Pack(key, wordlenght, MPI_CHAR, hashsend, sizepack, &position, MPI_COMM_WORLD);
+		MPI_Pack(&countword, 1, MPI_INT, hashsend, sizepack, &position, MPI_COMM_WORLD);
+	}
+}
+MPI_Gatherv(hashsend, countpack, MPI_PACKED, htsreceived, countselem, dispelem, MPI_PACKED, MASTER, MPI_COMM_WORLD);
+```
+Fatto ciò il MASTER ha ricevuto tutti i dati e deve eseguire la <code>MPI_Unpack()</code> sui dati ricevuti. Man mano che spacchetta vengono analizzate le tabelle e inserite le parole all'interno della propria tabella. Finito questo passaggio manca solo riordinare la sua HashTable. Il riordinamento avviene in questo modo:
+* Per fare in modo di non toccare la tabella, viene sfruttata una struttura dati d'appoggio chiamata MergedHashTable, che corrisponde semplicemente ad una entry di un HashTable;
+* Viene dichiarato un array di questa struttura, grande quanto il numero di entry della HashTable, che poi viene riempito tramite l'HashTableIterator.
+* Per finire viene applicato un algoritmo di mergeSort che riordina l'array secondo il numero di frequenze di ogni parola in ordine decrescente. A parità di frequenze, le parole vengono ordinate in ordine alfabetico.
+```c
+//Ordinamento
+numEntries = ht_length(counts);
+merged_ht* mergedTable = merged_ht_create(numEntries);
+
+if (mergedTable == NULL)
+	exit_nomem();
+
+        // Struttura dati che permettere di scorrere gli elementi della Hash Table
+htit = ht_iterator(counts);
+int q = 0;
+
+       // Riempio gli array per riordinarli (per evitare di toccare la HashTable)
+while (ht_next(&htit)) {
+	setword(mergedTable, htit.key, q);
+        mergedTable[q].freq = *(int*) htit.value;
+	q++;
+}
+
+      // Effettuo l'ordinamento
+mergeSort(mergedTable, 0, numEntries - 1);
+//-----------------------------------------------------------------------------------------------------
+void merge(merged_ht* mergedTable, int l, int m, int r){
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
+
+    // Vengono creati degli array temporanei
+    int L1[n1], R1[n2];
+    char L2[n1][WORD], R2[n2][WORD];
+ 
+    // Vengono riempiti
+    for (i = 0; i < n1; i++){
+        strcpy(L2[i], mergedTable[l + i].word);
+        L1[i] = mergedTable[l + i].freq;
+    }
+    for (j = 0; j < n2; j++){
+        strcpy(R2[j], mergedTable[m + 1 + j].word);
+        R1[j] = mergedTable[m + 1 + j].freq;
+    }
+
+    // Vengono uniti gli array temporanei negli array di partenza nella struttura dati
+    i = 0; // Indice iniziale del primo sottoarray
+    j = 0; // Indice iniziale del secondo sottoarray
+    k = l; // Indice iniziale del sottoarray unito
+
+    while (i < n1 && j < n2) {
+        if (L1[i] > R1[j]) {
+            strcpy(mergedTable[k].word, L2[i]);
+            mergedTable[k].freq = L1[i];
+
+            i++;
+        }
+        else if(L1[i] < R1[j]){
+            strcpy(mergedTable[k].word, R2[j]);
+            mergedTable[k].freq = R1[j];
+            
+            j++;
+        } else {
+            if(strcmp(L2[i], R2[j]) < 0){
+                strcpy(mergedTable[k].word, L2[i]);
+                mergedTable[k].freq = L1[i];
+
+                i++;
+            } else {
+                strcpy(mergedTable[k].word, R2[j]);
+                mergedTable[k].freq = R1[j];
+                
+                j++;
+            }
+        }
+        k++;
+    }
+ 
+    // Vengono copiati gli elementi rimanenti del primo sottoarray, se ce ne sono
+    while (i < n1) {
+        strcpy(mergedTable[k].word, L2[i]);
+        mergedTable[k].freq = L1[i];
+        i++;
+        k++;
+    }
+ 
+    // Vengono copiati gli elementi rimanenti del secondo sottoarray, se ce ne sono
+    while (j < n2) {
+        strcpy(mergedTable[k].word, R2[j]);
+        mergedTable[k].freq = R1[j];
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(merged_ht* mergedTable, int l, int r){
+    if (l < r) {
+        // Uguale a (l+r)/2, ma evita l'overflow per l e h grandi
+        int m = l + (r - l) / 2;
+ 
+        // Ordiniamo ricorsivamente la prima e la seconda metà degli array
+        mergeSort(mergedTable, l, m);
+        mergeSort(mergedTable, m + 1, r);
+        
+        merge(mergedTable, l, m, r);
+    }
+}
+
+```
+## Info per l'esecuzione
+Il codice è scritto su più file. Per eseguire il progetto basta eseguire:
+```
+make
+mpirun --allow-run-as-root -np <numeroProcessori> ./main
+```
+Affinchè il codice funzioni è necessario avere i file in una cartella chiamata <code>files</code> che si trova all'interno della stessa cartella dell'eseguibile. Per essere più chiari, il progamma leggerà tutti i files che si trovano all'interno della cartella <code>./files</code>
+## Test
+Per testare il programma sono stati usati prima due file di piccole dimensioni in modo da controllare l'andamento in modo autonomo, poi è estato eseguito lo script <code>accuracy.sh</code> che esegue il programma fino a 24 processori e poi confronta i risultati con il file <code>oracle.csv</code>, se dopo l'esecuzione non stampa nulla allora non ha trovato differenze tra i due file. Di seguito lo script accuracy.sh.
+```
+make
+mpirun --allow-run-as-root -np 1 ./main
+mpirun --allow-run-as-root -np 2 ./main
+mpirun --allow-run-as-root -np 3 ./main 
+mpirun --allow-run-as-root -np 4 ./main
+mpirun --allow-run-as-root -np 5 ./main 
+mpirun --allow-run-as-root -np 6 ./main 
+mpirun --allow-run-as-root -np 7 ./main 
+mpirun --allow-run-as-root -np 8 ./main 
+mpirun --allow-run-as-root -np 9 ./main 
+mpirun --allow-run-as-root -np 10 ./main 
+mpirun --allow-run-as-root -np 11 ./main 
+mpirun --allow-run-as-root -np 12 ./main 
+mpirun --allow-run-as-root -np 13 ./main 
+mpirun --allow-run-as-root -np 14 ./main 
+mpirun --allow-run-as-root -np 15 ./main 
+mpirun --allow-run-as-root -np 16 ./main
+mpirun --allow-run-as-root -np 17 ./main 
+mpirun --allow-run-as-root -np 18 ./main 
+mpirun --allow-run-as-root -np 19 ./main 
+mpirun --allow-run-as-root -np 20 ./main 
+mpirun --allow-run-as-root -np 21 ./main 
+mpirun --allow-run-as-root -np 22 ./main 
+mpirun --allow-run-as-root -np 23 ./main 
+mpirun --allow-run-as-root -np 24 ./main 
+cd output
+diff oracle.csv output1.csv
+diff oracle.csv output2.csv
+diff oracle.csv output3.csv
+diff oracle.csv output4.csv
+diff oracle.csv output5.csv
+diff oracle.csv output6.csv
+diff oracle.csv output7.csv
+diff oracle.csv output8.csv
+diff oracle.csv output9.csv
+diff oracle.csv output10.csv
+diff oracle.csv output11.csv
+diff oracle.csv output12.csv
+diff oracle.csv output13.csv
+diff oracle.csv output14.csv
+diff oracle.csv output15.csv
+diff oracle.csv output16.csv
+diff oracle.csv output17.csv
+diff oracle.csv output18.csv
+diff oracle.csv output19.csv
+diff oracle.csv output20.csv
+diff oracle.csv output21.csv
+diff oracle.csv output22.csv
+diff oracle.csv output23.csv
+diff oracle.csv output24.csv
+cd ..
+make clean
+```
+## Benchmarks
+Per l'esecuzione del benchmark è stato utilizzato uno script <code>benchmark.sh</code> che semplicemente esegue il comando <code>mpirun --allow-run-as-root -np <nProc> ./main</code> 3 volte per ogni numero di processori(ai fini del progetto viene eseguito 3 volte per ogni nproc fino a 24 processori). Per valutare le prestazioni sono stati calcolati:
+* Speedup, ovvero la riduzione del tempo di esecuzione di p processori (VCPUs) rispetto l'esecuzione su 1 processore. La formula usata è <code>Sp = Ts / Tp</code> in cui <code>Ts</code> sarebbe il tempo impiegato in sequenziale, <code>Tp</code> sarebbe il tempo impiegato con p processori.
+* Strong Scalability, ovvero la velocizzazione per una dimensione fissa del problema con l'aumento del numero di processori, ed è stata testata eseguendo il codice su una dimensione costante del probema con un numero crescente di processori (VCPUs). L'efficienza della strong scalability è stata calcolata con la formula: <code>Ep = Sp / p</code>, in cui p sarebbe il numero di processori.
+* Weak Scalability, ovvero la velocizzazione con un carico variabile al crescere del numero di processori (VCPUs). La formula per calcolare l'efficienza della weak scalability è <code>Ep = T1 / Tp</code> 
+## Risultati
+### Strong Scalability
+#### Numero di files = 35
+#### Size totale = 674MB =~ 674 milioni di caratteri
 
