@@ -8,23 +8,6 @@
 #include "mpi.h"
 
 /*
-typedef struct {    
-    int nFile;
-    int *indexFiles;
-    int *startFd;
-    int *endFd;
-    int size;
-} DataDist;
-
-typedef struct {          
-    int n;                
-    int *dims;         
-    int *restDim;   
-    char **names;               
-} Info;
-*/
-
-/*
     Si calcola la media come numero double, poi si assegna il floor della media
     (sarebbe la media approssimata per difetto) a MASTER, e si assegna il ceil
     della media(media approssimata per eccesso) a tutti gli altri processori.
@@ -50,7 +33,6 @@ void distribute(DataDist *struc, Info info, int numtasks){
 
     for(int i = 0; i < numtasks ; i++){      //Ciclo per i processori 
         struc[i].nFile = 0;
-       // somma = 0;
         for(int j = 0; struc[i].size != 0 && count < info.n; j++){      //Ciclo per assegnare i file ai processori
 
             struc[i].indexFiles[j] = count;
@@ -67,13 +49,11 @@ void distribute(DataDist *struc, Info info, int numtasks){
             if(struc[i].size >= info.restDim[count]){
                 struc[i].endFd[j] = EOF;
                 struc[i].size -= info.restDim[count];
-                //somma += info.restDim[count];
                 info.restDim[count] = 0;
                 count++;
             } else {
                 struc[i].endFd[j] = struc[i].startFd[j] + struc[i].size;
                 info.restDim[count] -= struc[i].size;
-                //somma += struc[i].size;
                 struc[i].size = 0;
             }
             //  file aggiunto

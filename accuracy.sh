@@ -14,7 +14,15 @@ mpirun --allow-run-as-root -np 12 ./main
 mpirun --allow-run-as-root -np 13 ./main 
 mpirun --allow-run-as-root -np 14 ./main 
 mpirun --allow-run-as-root -np 15 ./main 
-mpirun --allow-run-as-root -np 16 ./main 
+mpirun --allow-run-as-root -np 16 ./main
+mpirun --allow-run-as-root -np 17 ./main 
+mpirun --allow-run-as-root -np 18 ./main 
+mpirun --allow-run-as-root -np 19 ./main 
+mpirun --allow-run-as-root -np 20 ./main 
+mpirun --allow-run-as-root -np 21 ./main 
+mpirun --allow-run-as-root -np 22 ./main 
+mpirun --allow-run-as-root -np 23 ./main 
+mpirun --allow-run-as-root -np 24 ./main 
 cd output
 diff oracle.csv output1.csv
 diff oracle.csv output2.csv
@@ -32,5 +40,13 @@ diff oracle.csv output13.csv
 diff oracle.csv output14.csv
 diff oracle.csv output15.csv
 diff oracle.csv output16.csv
+diff oracle.csv output17.csv
+diff oracle.csv output18.csv
+diff oracle.csv output19.csv
+diff oracle.csv output20.csv
+diff oracle.csv output21.csv
+diff oracle.csv output22.csv
+diff oracle.csv output23.csv
+diff oracle.csv output24.csv
 cd ..
 make clean

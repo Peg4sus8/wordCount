@@ -99,16 +99,7 @@ int main(int argc, char *argv[]){
 	MPI_Bcast(names, nfiles * MAX_NAME, MPI_CHAR, MASTER, MPI_COMM_WORLD);
 	MPI_Barrier(MPI_COMM_WORLD);
 	//printOneDistr(mydistr, names, myrank);
-	
-/*
-typedef struct {    
-    int nFile;
-    int *indexFiles;
-    int *startFd;
-    int *endFd;
-    int size;
-} DataDist;
-*/
+
 	// ---------------------- Inizio conteggio parole ---------------------------------------
 	for(int i = 0; i < mydistr.nFile; i++){
 		char wordToAdd[WORD], buffer[ROW];
@@ -145,7 +136,6 @@ typedef struct {
 					}
 				}
 			}
-			fclose(fp);
 		} else {
 			if((mydistr.endFd[i] - ftell(fp)) < row)	{
 				row = mydistr.endFd[i] - ftell(fp);
@@ -194,6 +184,7 @@ typedef struct {
 				
 			} 	// end while
 		}
+		fclose(fp);
 	}
 	
 	// -------- Fine conteggio parole ----- Inizio spedizione tabelle --------
