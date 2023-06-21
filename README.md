@@ -529,9 +529,13 @@ Per l'esecuzione del benchmark è stato utilizzato uno script <code>benchmark.sh
 | 22         |  4.653370 |   7.97  |    0.36    |
 | 23         |  5.077088 |   7.30  |    0.32    |
 | 24         |  4.788971 |   7.74  |    0.32    |
-<br>
-![images](./images/StrongScalability.png)
-Come si può notare dalla tabella al crescere dei processori abbiamo una notevole diminuzione del tempo di esecuzione, che in termini di speedup significa 9.12 nel suo massimo, anche se l'efficienza è 0,51. Infatti non sempre minor tempo significa migliori prestazioni, nel caso di 18 processori(vCPU) ci si aspetterebbe uno speed up di 18 appunto, per questo calcoliamo l'efficienza la quale ci dice che per la scalabilità forte le performance migliori le abbiamo con 2, 3, 4 e 5 processori
+
+![image](./images/StrongScalability.png)
+
+Come si può notare dalla tabella al crescere dei processori abbiamo una notevole diminuzione del tempo di esecuzione, che in termini di speedup significa 9.12 nel suo massimo, anche se l'efficienza è 0,51. Infatti non sempre minor tempo significa migliori prestazioni, nel caso di 18 processori(vCPU) ci si aspetterebbe uno speed up di 18 appunto, per questo calcoliamo l'efficienza la quale ci dice che per la scalabilità forte le performance migliori le abbiamo con 2, 3, 4 e 5 processori.
+
+### Weak Scalability
+#### Size totale = 42MB =~ 42 milioni di caratteri
 
 | # Processi | Tempo(s) | Efficienza |
 |------------|----------|------------|
@@ -559,4 +563,13 @@ Come si può notare dalla tabella al crescere dei processori abbiamo una notevol
 | 22         | 7.920550 |    0.33    |
 | 23         | 6.352495 |    0.40    |
 | 24         | 7.808870 |    0.32    |
+
+![image](./images/WeakScalability.png)
+Il grafico riporta il test della Weak Scalability il quale è stato fatto partendo da un workload di 42MB che viene aumentato proporzionalmente ogni volta che vi è un nuovo processore, in modo tale che ogni processo lavora sullo stesso ammontare di workload.
+Come possiamo notare, i tempi si scostano poco tra loro, di conseguenza possiamo notare che l'algoritmo scala abbastanza bene quando il workload aumenta in modo proporzionale al numero di processi utilizzati.
+<br>
+
+![image](./images/Efficienza.png)
+## Risultati
+L'implementazione in MPI permette sicuramente di avere una velocizzazione dal punto di vista di tempistiche anche se, come visto, lo Speed Up ricavato è lontano da quello ideale, questo è dovuto sicuramente dall'overhead tra i processi, poi perchè ci può essere un sovraccarico per il processo MASTER che deve innanzittutto calcolare la distribuzione, poi inviare a tutti i processi (i tempi di invio/ricezione incidono sullo Speed Up finale, anche se le comunicazioni sono state ridotte al minimo possibile) e poi alla fine deve ricevere le tabelle da tutti i processi, unirle e riordinarle. Una possibile miglioria potrebbe essere un'implementazione del mergeSort in modo parallelo. Infine, lo svolgimento di questo progetto ha permesso di toccare con mano le problematiche sulla coordinazione dei dati tra diversi processi in problemi non "embarassingly parallels". 
 
