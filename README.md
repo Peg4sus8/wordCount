@@ -529,7 +529,9 @@ Per l'esecuzione del benchmark è stato utilizzato uno script <code>benchmark.sh
 | 22         |  4.653370 |   7.97  |    0.36    |
 | 23         |  5.077088 |   7.30  |    0.32    |
 | 24         |  4.788971 |   7.74  |    0.32    |
-
+<br>
+![images](./images/StrongScalability.png)
+Come si può notare dalla tabella al crescere dei processori abbiamo una notevole diminuzione del tempo di esecuzione, che in termini di speedup significa 9.12 nel suo massimo, anche se l'efficienza è 0,51. Infatti non sempre minor tempo significa migliori prestazioni, nel caso di 18 processori(vCPU) ci si aspetterebbe uno speed up di 18 appunto, per questo calcoliamo l'efficienza la quale ci dice che per la scalabilità forte le performance migliori le abbiamo con 2, 3, 4 e 5 processori
 
 | # Processi | Tempo(s) | Efficienza |
 |------------|----------|------------|
